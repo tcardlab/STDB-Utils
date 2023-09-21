@@ -1,2 +1,2 @@
 # STDB-Utils
-TS/JS utilities for spacetime DB
+TS/JS utilities for Spacetime DB
