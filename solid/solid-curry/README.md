@@ -1,0 +1,1 @@
+see vanilla curry, this just cleans up events when components unmount.

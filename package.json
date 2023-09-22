@@ -1,0 +1,42 @@
+{
+  "name": "stdb-utils",
+  "version": "1.0.0",
+  "description": "TS/JS utilities for SpacetimeDB",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tcardlab/STDB-Utils.git"
+  },
+  "keywords": [
+    "spacetimedb",
+    "spacetime",
+    "database",
+    "utils",
+    "primitives",
+    "reactive"
+  ],
+  "author": "Thomas J. Card",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tcardlab/STDB-Utils/issues"
+  },
+  "homepage": "https://github.com/tcardlab/STDB-Utils#readme",
+  "dependencies": {
+    "@clockworklabs/spacetimedb-sdk": "^0.6.2",
+    "@types/node": "^20.6.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.3",
+    "vite": "^4.3.9",
+    "vite-plugin-solid": "^2.7.0"
+  },
+  "workspaces": [
+    "vanilla/*",
+    "solid/*",
+    "site/*"
+  ]
+}
