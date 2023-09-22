@@ -13,35 +13,35 @@
 
 interface Database {
   (): (URL);
-  dns?: (name:string)=>Promise<object>;
+  dns: (name:string)=>Promise<object>;
 }
 
 interface Database2 extends URL {
-  dns?: (name:string)=>Promise<{ "Success": {domain: string, address?: string} }>;
-  reverse_dns?: (name:string)=>Promise<{names: Array<string> }>;
-  set_name?: (domain:string, register_tld:boolean, address:string)=>Promise<{ 
+  dns: (name:string)=>Promise<{ "Success": {domain: string, address?: string} }>;
+  reverse_dns: (name:string)=>Promise<{names: Array<string> }>;
+  set_name: (domain:string, register_tld:boolean, address:string)=>Promise<{ 
     Success?: { domain: string, address: string },
     TldNotRegistered?: { domain: string }
     PermissionDenied?: { domain: string }
   }>;
 
-  ping?: ()=>Promise<Response>;
+  ping: ()=>Promise<Response>;
 
-  register_tld?: ({tld}:{tld:string})=>Promise<{
+  register_tld: ({tld}:{tld:string})=>Promise<{
     Success?: { domain: string }
     AlreadyRegistered?: { domain: string }
     Unauthorized?: { domain: string } 
   }>;
 
-  call?: (reducer:string, args:any[], address?:string)=>Promise<Response>;
+  call: (reducer:string, args:any[], address?:string)=>Promise<Response>;
 
-  schema?:(
+  schema:(
       (...args:any[]) => Promise<any>
     | ((address:string, argN?:{expand:boolean}) => Promise<any>)
     | ((address:string, entityType:string, entityName:string, argN?:{expand:boolean}) => Promise<any>)
   )
 
-  info?: (address?:string)=>Promise<{
+  info: (address?:string)=>Promise<{
     address: string,
     identity: string,
     host_type: "wasmer",
@@ -49,9 +49,9 @@ interface Database2 extends URL {
     program_bytes_address: string
   }>;
 
-  logs?:(opts?:{follow?:boolean, num_lines?:number}, address?:string)=>Promise<Response>;
+  logs:(opts?:{follow?:boolean, num_lines?:number}, address?:string)=>Promise<Response>;
 
-  sql?: (queries:string|string[], dbAddress?:string)=>Promise<{
+  sql: (queries:string|string[], dbAddress?:string)=>Promise<{
     schema: {elements: Array<any>},
     rows: Array<any>
   }[]>;
@@ -105,7 +105,7 @@ let setParams = (paramObj:URLSearchParams, params: Record<string, string|number|
   }
 }
 
-let client = async (
+export const client = async (
   host:string,
   dbAddress:string,
   ssl: boolean=true,
@@ -133,7 +133,7 @@ let client = async (
 
 /* Could i have dine a class instead? probably lul*/
   //let database:Database = ()=>new URL('database', baseURL);
-  let database:Database2 = new URL('database', baseURL);
+  let database = (new URL('database', baseURL) as Database2)
   DATABASE: {
     /***   GET   ***/
     database.dns = async (name) => await fetchJSON(join(database, 'dns', name))

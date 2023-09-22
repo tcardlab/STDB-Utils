@@ -4,14 +4,16 @@
 
   Wait, this is way more agnostic than I thought. ReactiveMap is the only 
   framework specific dep. I might move this to vanilla mane make a solid wrapper.
+
+  maybe I'll make a variant that just uses plain objects
+  or rather store/signal
+  Maps are kind of a pain to deal with
 */
 import { } from 'solid-js'
 import { ReactiveMap } from '@solid-primitives/map';
 import { __SPACETIMEDB__, Identity } from '@clockworklabs/spacetimedb-sdk';
 
-// maybe I'll make a variant that just uses plain objects
-// or rather store/signal
-// Maps are kind of a pain to deal with
+
 
 let valParse = (v:any) => {
   if (v instanceof Identity) {
