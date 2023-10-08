@@ -1,3 +1,6 @@
+// i don't really know how to dev/test hmr other than in prod...
+console.log("HIT HMR DEV")
+
 import { render } from "solid-js/web"
 import { onMount, createSignal, For, Accessor, Setter } from "solid-js"
 import { createStore } from "solid-js/store"

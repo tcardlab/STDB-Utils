@@ -1,13 +1,17 @@
+import { solidCurryChange } from "../src/index.js"
+import type { onChangeCB } from "../src/index.js"
+
+import { name, config } from "../package.json"
+import root_json from "~/package.json"
+let pkg_config = { ...root_json.config, ...config }
+
+////
+
 import { render } from "solid-js/web"
 import { onMount, createSignal, For, Accessor, Setter } from "solid-js"
 import { createStore } from "solid-js/store"
 
 import { SpacetimeDBClient, Identity } from '@clockworklabs/spacetimedb-sdk'
-
-// If you need to run a custom server, 
-// you can define/get relevant info 
-// from the local package "../package.json"
-import { name, config } from "~/package.json"
 
 import {
   UserTable,
@@ -22,8 +26,8 @@ import {
 
 /**  Init Client  **/
 let token = localStorage.getItem('auth_token') || undefined;
-console.log(config.host, name)
-let client = new SpacetimeDBClient(config.host, name.replace('/','-'), token);
+console.log(pkg_config.host, name)
+let client = new SpacetimeDBClient(pkg_config.host, name.replace('/','-'), token);
 
 
 const App = () => {
@@ -48,21 +52,30 @@ const App = () => {
 
 
   /**  Handle init IDs  **/
+  let onChangeUser = solidCurryChange(UserTable)
+
   let [users, setUsers] = createStore<Record<string, UserTable>>({})
   let [self, setSelf] = createSignal<UserTable|null>()
-  let upsert = (row:UserTable)=> {
-    let ID = row.identity.toHexString()
+  // Upsert example
+  let upsert:onChangeCB = (e, row, oldRow, red) => {
+    if (!row) return 
+    console.log(e, row, oldRow)
+    let ID = (row || oldRow)?.identity.toHexString()
     setUsers(ID, row)
     if (ID === local_id?.toHexString()) setSelf(row)
   }
-  UserTable.onInsert((row, red)=>{
-    console.log("new user in cache!");
-    upsert(row)
-  })
-  UserTable.onUpdate((_, row, red)=>{
-    console.log("updated user!");
-    upsert(row)
-  })
+  onChangeUser(upsert, ['+'])
+
+  // Example of handling 4 states with 1 function
+  let [online, setOnline] = createStore<Record<string, UserTable>>({})
+  let filterOnline:onChangeCB = (e, v, oldV)=>{
+    let ID = (v||oldV)?.identity.toHexString()
+    // delete or update w/ falsy online 
+    if (e==='-' || !v?.online) return setOnline(ID, undefined!)
+    // insert & update w/ truthy online 
+    setOnline(ID, v)
+  }
+  onChangeUser(filterOnline, ['+'])
 
 
   /**  Update Name  **/
@@ -77,21 +90,22 @@ const App = () => {
   /**  Things  **/
   // nested reactivity: https://www.solidjs.com/tutorial/stores_nested_reactivity?solved
   let [things, setThings] = createSignal<{id:number, rVal: Accessor<ThingTable>; rSet: Setter<ThingTable>}[]>([])
+  // Using Switch Statement
+  let handelThings:onChangeCB = (e, row, oldRow, red) => {
+    let id = (row||oldRow)?.thingId
+    switch(e) {
+      case '+':
+        let [rRow, setRRow] = createSignal<ThingTable>(row!)
+        return setThings(v=>([...v, {id, rVal:rRow, rSet:setRRow}]))
+      case '=':
+        return things().find(t => t.id === id)?.rSet(row)
+      case '-':
+        setThings( things().filter(t => t.id !== id) )
+        return rmEditThing(id)
+    }
+  }
+  solidCurryChange(ThingTable)(handelThings, ['+'])
 
-  ThingTable.onInsert((row, red)=>{
-    let id = row.thingId
-    let [rRow, setRRow] = createSignal<ThingTable>(row)
-    setThings(v=>([...v, {id, rVal:rRow, rSet:setRRow}]))
-  })
-  ThingTable.onUpdate((_, row, red)=>{
-    let ID = row.thingId
-    things().find(t => t.id === ID)?.rSet(row)
-  })
-  ThingTable.onDelete((row, red)=>{
-    let ID = row.thingId
-    setThings( things().filter(t => t.id !== ID) )
-    rmEditThing(ID)
-  })
   let newThing = ()=>{
     let el = document.getElementById('new-thing') as HTMLInputElement
     CreateThingReducer.call(el.value)
@@ -129,12 +143,19 @@ const App = () => {
 
       <div class="online">
         <h3>Online:</h3>
-        { Object.values(users).reduce(
-            (a:string[], u:UserTable):string[] => u.online ? [...a, u.username!] : a,
-            []
-          ).join(',\n')
-          || "No Users"
-        }
+        <div>
+          {/* Filters a Reactive Data Structure */}
+          { Object.values(users).reduce(
+              (a:string[], u:UserTable):string[] => u.online ? [...a, u.username!] : a,
+              []
+            ).join(',\n')
+            || "No Users"
+          }
+        </div>
+        <div>
+          {/* Filters at STDB Event Level */}
+          { Object.values(online).map(u => u.username).join(',\n') }
+        </div>
       </div>
 
       <div class="new-item">

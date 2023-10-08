@@ -1,149 +1,179 @@
-import styles from './App.module.css';
-import { solidTable } from './utils/solidTable'
-import { __SPACETIMEDB__ } from '@clockworklabs/spacetimedb-sdk';
+import { render } from "solid-js/web"
+import { onMount, createSignal, For, Accessor, Setter } from "solid-js"
+import { createStore } from "solid-js/store"
 
-let HMRData = import.meta.hot?.data
-let token = HMRData?.token || localStorage.getItem('auth_token') || undefined;
-let client:I<typeof SpacetimeDBClient> = HMRData?.client || new SpacetimeDBClient("wss://testnet.spacetimedb.com", "cursor2", token);
-HMRData.client = client
-HMRData.token = token
+import { SpacetimeDBClient, Identity } from '@clockworklabs/spacetimedb-sdk'
 
-import.meta.hot?.on?.('vite:beforeUpdate', ()=>{
-  client.db.tables.forEach(table=>{
-    table.emitter.removeAllListeners()
-  })
-  //"update" | "insert" | "delete" | "initialStateSync" | "connected" | "disconnected" | "client_error";
-  client.emitter.removeAllListeners()
-})
+// If you need to run a custom server, 
+// you can define/get relevant info 
+// from the local package "../package.json"
+import { name, config } from "~/package.json"
 
-function hmrConnect() {
-  if (!client.live) return client.connect()
-  client.emitter.emit("connected", client.token, client.identity)
-}
+import {
+  UserTable,
+  ThingTable,
+  CreateUserReducer,
+  SetNameReducer,
+  CreateThingReducer,
+  ToggleThingStatusReducer,
+  DeleteThingReducer,
+  UpdateThingContentReducer
+} from "~/module_bindings/index.js"
+
+/**  Init Client  **/
+let token = localStorage.getItem('auth_token') || undefined;
+console.log(config.host, name)
+let client = new SpacetimeDBClient(config.host, name.replace('/','-'), token);
+
 
 const App = () => {
-  const [userStore, setUserStore] = createStore<I<typeof UserComp>|{}>({})
-  const isLogin = createMemo(()=>{
-    return 'online' in userStore && userStore?.online
-  })
-
-  let mapTest = tableMap(UserComp) 
-  client.on("initialStateSync", () => {
-    console.log('Map:', mapTest)
-  });
-
-  let [userComp$, delUserComp$] = solidTable(userComp);
-
-  // Demo: Sub after Init 
-  // Note: filter mostly does this for you anyway
-  let [online, setOnline] = createStore<Record<string, I<typeof UserComp>>>({})
-
-  let onChangeUser = curryChange(UserComp)
-  onChangeUser((e, v, vOld)=>{
-    let ID:string = (v||vOld!).identity.toHexString()
-    if (e==='-' || !v?.online) return setOnline(ID, undefined!)
-    setOnline(ID, v)
-  })
-  
-  client.on("initialStateSync", () => {
-    let onlineUsers = UserComp.filterByOnline(true);
-    let initV = onlineUsers.reduce((a, u)=>({...a, [u.identity.toHexString()]:u}), {})
-    setOnline(initV)
-  })
-
-
-/**  onConnect Callback  **/
-  let local_identity: Identity | undefined = undefined;
-  client.onConnect((token, identity) => {
-      console.log("Connected to SpacetimeDB");
-    
-      local_identity = identity;
-
-      localStorage.setItem('auth_token', token);
-
-      client.subscribe([
-        "SELECT * FROM UserComp",
-      ])
-  })
-  onMount(()=>{
-    hmrConnect()
-  })
-
-
-/**  Connecting to the module  **/
-  client.on("initialStateSync", () => {
-    let user = UserComp.filterByIdentity( local_identity! );
-    if (user) setUserStore(user)
-    console.log('userStore:', userStore)
-  });
-
-  
-/**  User.onUpdate callback - Notify about updated users  **/
-  onUpdate((user, oldUser) => {
-    if (!oldUser?.username) {
-      console.log(`New User ${user.username} joined.`);
+  /**  Connect & Init  **/
+  let local_id: Identity | undefined = undefined;
+  client.onConnect((new_token, identity) => {
+    console.log("Connected to SpacetimeDB");
+    local_id = identity;
+   
+    // Create User on Init
+    if (!token) {
+      localStorage.setItem('auth_token', new_token);
+      setTimeout(()=>{
+        console.log("create user")
+        CreateUserReducer.call(identity.toHexString().substring(0,8))
+      }, 2e3)
     }
-  
-    if (user?.username !== oldUser?.username) {
-      console.log(`User ${oldUser?.username} renamed to ${user?.username}.`);
-    }
-  }, [UserComp])
 
-  UserComp.onInsert((user, reducerEvent) => {
-    if (!reducerEvent) return // ignore client population inserts
-    console.log(`New User ${user.username} created.`);
+    client.subscribe([ "SELECT * FROM UserTable", "SELECT * FROM ThingTable" ])
   })
+  onMount(()=>client.connect())
 
 
-/**  Set Name  **/
-  SetNameReducer.on((reducerEvent, reducerArgs) => {
-    if (local_identity && reducerEvent.callerIdentity.isEqual(local_identity)) {
-      if (reducerEvent.status === 'failed') {
-        console.log((`Error setting name: ${reducerEvent.message} `))
-      }
-      else if (reducerEvent.status === 'committed') {
-        setUserStore({...userStore, username: reducerArgs[0]});
-      }
-    }
-  })
-
-  CreateUserReducer.on((reducerEvent, reducerArgs) => {
-    if (local_identity && reducerEvent.callerIdentity.isEqual(local_identity)) {
-      if (reducerEvent.status === 'failed') {
-        console.log((`Error creating user: ${reducerEvent.message} `))
-      }
-      else if (reducerEvent.status === 'committed') {
-        let user = UserComp.filterByIdentity( local_identity! );
-        if (user) setUserStore(user)
-      }
-    }
-  })
-
-  let nameInput:  HTMLInputElement | undefined;
-  const updateName = () => {
-    if (nameInput) SetNameReducer.call(nameInput.value);
+  /**  Handle init IDs  **/
+  let [users, setUsers] = createStore<Record<string, UserTable>>({})
+  let [self, setSelf] = createSignal<UserTable|null>()
+  let upsert = (row:UserTable)=> {
+    let ID = row.identity.toHexString()
+    setUsers(ID, row)
+    if (ID === local_id?.toHexString()) setSelf(row)
   }
-  const createUser = () => {
-    if (nameInput) CreateUserReducer.call(nameInput.value)
+  UserTable.onInsert((row, red)=>{
+    console.log("new user in cache!");
+    upsert(row)
+  })
+  UserTable.onUpdate((_, row, red)=>{
+    console.log("updated user!");
+    upsert(row)
+  })
+
+
+  /**  Update Name  **/
+  let [edit, setEdit] = createSignal(false)
+  let updateName = ()=>{
+    let el = document.getElementById('set-self') as HTMLInputElement
+    SetNameReducer.call(el.value)
+    setEdit(!edit())
   }
 
+
+  /**  Things  **/
+  // nested reactivity: https://www.solidjs.com/tutorial/stores_nested_reactivity?solved
+  let [things, setThings] = createSignal<{id:number, rVal: Accessor<ThingTable>; rSet: Setter<ThingTable>}[]>([])
+
+  ThingTable.onInsert((row, red)=>{
+    let id = row.thingId
+    let [rRow, setRRow] = createSignal<ThingTable>(row)
+    setThings(v=>([...v, {id, rVal:rRow, rSet:setRRow}]))
+  })
+  ThingTable.onUpdate((_, row, red)=>{
+    let ID = row.thingId
+    things().find(t => t.id === ID)?.rSet(row)
+  })
+  ThingTable.onDelete((row, red)=>{
+    let ID = row.thingId
+    setThings( things().filter(t => t.id !== ID) )
+    rmEditThing(ID)
+  })
+  let newThing = ()=>{
+    let el = document.getElementById('new-thing') as HTMLInputElement
+    CreateThingReducer.call(el.value)
+    el.value = ""
+  }
+
+  let [editThings, setEditThings] = createSignal(new Set(), {equals:false})
+  let onEditThing = (id:number)=>setEditThings(v=>v.add(id.toString()))
+  let isEditing = (id:number)=>editThings().has(id.toString())
+  let rmEditThing = (id:number)=>setEditThings(v=>{v.delete(id.toString()); return v})
+  let saveEditThing = (id:number)=>{
+    let el = document.getElementById('thing-input'+id) as HTMLInputElement
+    UpdateThingContentReducer.call(id, el.value)
+    rmEditThing(id)
+  }
+
+
+  /**  Template  **/
   return (
-    <div class={styles.App}>
-      <p>name: {'username' in userStore ? userStore?.username : "unknown" }</p>
-      <br/>
-      <input type='text' ref={nameInput!} />
-      {
-        isLogin()
-          ? <button onClick={updateName}>Update Name</button>
-          : <button onClick={createUser}>Create User</button>
-      }
-      <div>
-        Online: {Object.values(online).map(u=>u.username).join(', ')}
-        <br/>
-        Users: { userComp$.values().map(u=>u.username).join(', ') }
+    <div class="grid">
+
+      <div class="self">
+        <h3>Self:</h3>
+        { edit()
+            ? <>
+              <button onClick={updateName}>💾</button>
+              <input id="set-self" type="text" />
+            </>
+            : <>
+              <button onClick={()=>setEdit(!edit())}>✏️</button>
+              {self()?.username || "unknown  user"}
+            </>
+        }
+      </div>
+
+      <div class="online">
+        <h3>Online:</h3>
+        { Object.values(users).reduce(
+            (a:string[], u:UserTable):string[] => u.online ? [...a, u.username!] : a,
+            []
+          ).join(',\n')
+          || "No Users"
+        }
+      </div>
+
+      <div class="new-item">
+        <h3>New-Thing:</h3>
+          <button onClick={newThing}>➕</button>
+          <input id="new-thing" type="text"/>
+      </div>
+
+      <div class="things">
+        <h3>Things:</h3>
+        <div class="thing-scroll">
+          <For each={things().sort((a,b) => Number(a.id) - Number(b.id))}>
+            {({ id, rVal }) => (
+              <div class="thing" data-active={rVal().status}>
+                <span>
+                  <input
+                    id={'thing-'+id} name={'thing-'+id} type="checkbox"
+                    checked={rVal().status} onChange={()=>ToggleThingStatusReducer.call(rVal().thingId)}
+                  />
+                  {isEditing(rVal().thingId)
+                    ? <input id={'thing-input'+id} type="text" value={''+rVal().content}/>
+                    : <label for={'thing-'+id}>{rVal().content || id.toString()}</label>
+                  }
+                </span>
+
+                <span>
+                  {isEditing(rVal().thingId)
+                    ? <button onClick={()=>saveEditThing(rVal().thingId)}>💾</button>
+                    : <button onClick={()=>onEditThing(rVal().thingId)} >✏️</button>
+                  }
+                  <button onClick={()=>DeleteThingReducer.call(rVal().thingId)}>❌</button>
+                </span>
+              </div>
+            )}
+          </For>
+        </div>
       </div>
     </div>
   )
 }
 
-export default App;
+render(() => <App />, document.getElementById("root")!)

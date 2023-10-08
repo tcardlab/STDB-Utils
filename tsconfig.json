@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "declaration": true,
     "resolveJsonModule": true,
     "module": "NodeNext",
     "target": "ESNext",
@@ -7,6 +8,7 @@
     "lib": ["DOM", "ESNext"],
     "moduleResolution": "NodeNext",
     "noEmit": true,
+    "allowImportingTsExtensions":true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "esModuleInterop": true,
@@ -17,6 +19,9 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "types": ["node", "vite/client"],
+    "paths": {
+      "~/*": ["./*"],
+    }
   },
-  "exclude": ["node_modules", "dist", "build"]
+  "exclude": ["node_modules", "./**/node_modules", "./**/dist", "./**/build"]
 }

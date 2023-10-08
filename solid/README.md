@@ -1,1 +1,0 @@
-These may are solid specific Utils, which means they wrap vanilla utils (usually or auto cleanup), deeply integrate reactivity, or rely upon some other solid specific feature.

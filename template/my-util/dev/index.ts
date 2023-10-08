@@ -1,5 +1,0 @@
-/*
-
-  I am not entirely sure how i want to handle this part yet...
-
-*/

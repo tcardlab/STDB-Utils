@@ -1,3 +1,6 @@
+// You'll want to import your script here 
+// import { myUtil } from '../src/index.js'
+
 import { render } from "solid-js/web"
 import { onMount, createSignal, For, Accessor, Setter } from "solid-js"
 import { createStore } from "solid-js/store"

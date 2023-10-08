@@ -1,24 +1,18 @@
 {
-  "name": "@stdb-utils/your-util-name",
-  "author": "{Your Name}",
+  "name": "@stdb-utils/solid-db",
+  "author": "Thomas J. Card",
   "description": "@stdb-utils: {Your description}",
-  "homepage": "https://github.com/solidjs-community/solid-primitives/tree/main/{workspace}/{your-util-file-name}#readme",
+  "homepage": "https://github.com/solidjs-community/solid-primitives/tree/main/solid/solid-db#readme",
   "version": "0.0.0",
   "config": {
-    "vite": "vanilla",
-    "Here are the config options": {
-      "vite": "vite config ('none'/falsy to run as script via tsx)",
-      "dbName": "custom db name override",
-      "server": "relative server dir location", 
-      "host": "package server-host override",
-      "protocol": "package server-protocol override"
-    }
+    "vite": "solid"
   },
-  "build": {},
   "dependencies": {
+    "@solid-primitives/map": "^0.4.8"
   },
   "peerDependencies": {
-    "@clockworklabs/spacetimedb-sdk": "^0.6.2"
+    "@clockworklabs/spacetimedb-sdk": "^0.6.2",
+    "solid-js": "^1.7.12"
   },
   "scripts": {
     "dev": "tsx ../../scripts/dev.ts",

@@ -1,4 +1,4 @@
-TBD
+TBD (We don't really have components to show off atm, so I wont be hosting examples through the site.)
 
 Will probably be borrowing heavily from [solid-primitives](https://github.com/solidjs-community/solid-primitives/tree/main/site).<br/>
 Solid community just does things right.

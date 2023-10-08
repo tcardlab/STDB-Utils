@@ -96,7 +96,11 @@ let join = (baseUrl:string|URL|(()=>URL), ...subPath:string[])=>{
   } else {
     resolvedBase = baseUrl()
   }
-  return new URL( [resolvedBase.pathname, ...subPath].join('/'), resolvedBase )
+  // Kinda ugly
+  return new URL( 
+    [resolvedBase.pathname, ...subPath].join('/').replace('//', '/'), // Path
+    resolvedBase  // Host 
+  )
 }
 
 let setParams = (paramObj:URLSearchParams, params: Record<string, string|number|boolean>) => {
@@ -117,7 +121,7 @@ export const client = async (
   const headers: Record<string, string> = {};
   if (!token) {
     // Gen token in none
-    let tokenUrl = `https://testnet.spacetimedb.com/identity`;
+    let tokenUrl = new URL('identity', baseURL) // join(baseURL, 'identity')
     const response = await fetch(tokenUrl, { method: "POST", headers });
     token = response.ok ? (await response.json()).token : ''
   }

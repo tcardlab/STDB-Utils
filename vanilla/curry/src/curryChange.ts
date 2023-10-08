@@ -14,11 +14,13 @@
     - : remove row
 */
 
+import type { Table, IN, Red, noop, I } from '~/global.ts';
+
 let hmrCleanup = (cb: ()=>void)=>{
   import.meta?.hot?.on?.('vite:beforeUpdate', cb)
 }
 
-type onChangeCB = <T extends Table>(e:string, v:IN<T>, vOld?:IN<T>, red?:Red)=>void
+export type onChangeCB = <T extends Table>(e:string, v:IN<T>, vOld?:IN<T>, red?:Red)=>void
 export interface curryCB {
   (cb: onChangeCB,
   filterBypass?:(()=>string[]) | string[],
